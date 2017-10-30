@@ -30,6 +30,8 @@ int main()
   arenaCheck();
   freeRegion(p2);
   arenaCheck();
+  resizeRegion(p1, 512);
+  arenaCheck();
   freeRegion(p3);
   arenaCheck();
   freeRegion(p1);

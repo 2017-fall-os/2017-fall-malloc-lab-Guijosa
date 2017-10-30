@@ -253,20 +253,44 @@ void freeRegion(void *r) {
 */
 void *resizeRegion(void *r, size_t newSize) {
   int oldSize;
+  int sucSize;
+  int conjunctSize;
+  newSize = align8(newSize);
+  BlockSuffix_t *temp;
   if (r != (void *)0)		/* old region existed */
     oldSize = computeUsableSpace(regionToPrefix(r));
   else
     oldSize = 0;		/* non-existant regions have size 0 */
   if (oldSize >= newSize)	/* old region is big enough */
     return r;
-  else {			/* allocate new region & copy old data */
-    char *o = (char *)r;	/* treat both regions as char* */
-    char *n = (char *)firstFitAllocRegion(newSize); 
-    int i;
-    for (i = 0; i < oldSize; i++) /* copy byte-by-byte, should use memcpy */
-      n[i] = o[i];
-    freeRegion(o);		/* free old region */
-    return (void *)n;
+  else {
+    BlockPrefix_t *sv2;
+    BlockSuffix_t *rv2;
+    BlockPrefix_t *block_r = regionToPrefix(r);
+    BlockPrefix_t *s = computeNextPrefixAddr(block_r);
+    if(s->allocated == 0){           /* if succesor is free */
+      sucSize = computeUsableSpace(s);
+      conjunctSize = oldSize + sucSize;
+      if(conjunctSize >= newSize){  /* if there is size in s+r */
+        rv2 = ((void *)(block_r->suffix) + (newSize - oldSize)); /*create a new suffix for r*/
+	block_r->suffix = rv2;      /* make the prefix of r point the new suffix */
+	rv2->prefix = block_r;
+	sv2 = ((void *)(rv2) + suffixSize); /*create a new prefix for s*/
+	sv2->suffix = s->suffix;    /*point new prefix to  the suffix of s*/
+	sv2->allocated = 0;
+	s->suffix->prefix = sv2;     /* make the suffix of s porint to r */
+	s = sv2;
+       	return prefixToRegion(block_r); /* return r as a region */
+      }
+    } else {                        /* allocate new region & copy old data */
+      char *o = (char *)r;          /* treat both regions as char* */
+      char *n = (char *)firstFitAllocRegion(newSize); 
+      int i;
+      for (i = 0; i < oldSize; i++) /* copy byte-by-byte, should use memcpy */
+	n[i] = o[i];
+      freeRegion(o);		    /* free old region */
+      return (void *)n;
+    }
   }
 }
 

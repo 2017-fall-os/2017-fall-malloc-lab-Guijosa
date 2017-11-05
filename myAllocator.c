@@ -243,6 +243,8 @@ void freeRegion(void *r) {
 
 BlockPrefix_t *findNextFit(size_t s, BlockPrefix_t *startingPoint) { /* find next block with usable space > s */
   BlockPrefix_t *p = startingPoint;
+  if(p == 0)
+    return arenaBegin;
   while (p) {
     if (!p->allocated && computeUsableSpace(p) >= s)
       return p;
@@ -323,6 +325,7 @@ void *resizeRegion(void *r, size_t newSize) {
 	sv2->allocated = 0;
 	s->suffix->prefix = sv2;     /* make the suffix of s porint to r */
 	s = sv2;
+	freeRegion(prefixToRegion(getNextPrefix(block_r)));
        	return prefixToRegion(block_r); /* return r as a region */
       }
     } else {                        /* allocate new region & copy old data */
